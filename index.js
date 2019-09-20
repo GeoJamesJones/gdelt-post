@@ -69,8 +69,8 @@ async function sendRequest (options) {
     }
   }
 
-let dirpath = './geojson';
-let complete_path = './finished';
+let dirpath = 'E:\GeoJSON';
+let complete_path = 'E:\completed';
 
 readFiles(dirpath)
     .then(files => {
@@ -90,8 +90,8 @@ readFiles(dirpath)
     
             sendRequest(sentiment_params);
 
-            var oldPath = dirpath + '/' + item.filename;
-            var newPath = complete_path + '/' + item.filename;
+            var oldPath = path.join(dirpath,item.filename);
+            var newPath = path.join(complete_path, item.filename);
 
             fs.rename(oldPath, newPath, function (err) {
                 if (err) throw err
