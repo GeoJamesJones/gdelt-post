@@ -1,39 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 const request = require('request');
+var chokidar = require('chokidar');
 
-function promiseAllP(items, block) {
-    var promises = [];
-    items.forEach(function(item,index) {
-        promises.push( function(item,i) {
-            return new Promise(function(resolve, reject) {
-                return block.apply(this,[item,index,resolve,reject]);
-            });
-        }(item,index))
-    });
-    return Promise.all(promises);
-} //promiseAll
-
-function readFiles(dirname) {
-    return new Promise((resolve, reject) => {
-        fs.readdir(dirname, function(err, filenames) {
-            if (err) return reject(err);
-            promiseAllP(filenames,
-            (filename,index,resolve,reject) =>  {
-                fs.readFile(path.resolve(dirname, filename), 'utf-8', function(err, content) {
-                    if (err) return reject(err);
-                    return resolve({filename: filename, contents: content});
-                });
-            })
-            .then(results => {
-                return resolve(results);
-            })
-            .catch(error => {
-                return reject(error);
-            });
+function readFiles(dirname, onFileContent, onError) {
+    fs.readdir(dirname, function(err, filenames) {
+      if (err) {
+        onError(err);
+        return;
+      }
+      filenames.forEach(function(filename) {
+        fs.readFile(dirname + filename, 'utf-8', function(err, content) {
+          if (err) {
+            onError(err);
+            return;
+          }
+          onFileContent(filename, content);
         });
-  });
-}
+      });
+    });
+  };
 
 async function post (options) {
     return new Promise((resolve, reject) => {
@@ -72,34 +58,44 @@ async function sendRequest (options) {
 let dirpath = './geojson';
 let complete_path = './finished';
 
-readFiles(dirpath)
-    .then(files => {
-        console.log( "loaded ", files.length );
-        files.forEach( (item, index) => {
-            console.log( "item",index, "size ", item.contents.length, "name",item.filename);
 
-            let sentiment_params = {
-                method : 'POST',
-                rejectUnauthorized: false,
-                url : 'https://wdcrealtime.esri.com:6143/geoevent/rest/receiver/gdelt-geojson-in',
-                headers : {
-                    'Content-Type': 'application/json'
-                },
-                body: item.contents
-            };
+
     
-            sendRequest(sentiment_params);
 
-            var oldPath = dirpath + '/' + item.filename;
-            var newPath = complete_path + '/' + item.filename;
-
-            fs.rename(oldPath, newPath, function (err) {
-                if (err) throw err
-                console.log('Successfully renamed - AKA moved!')
-            })
-
-        });
-    })
-    .catch( error => {
-        console.log( error );
-    });
+var watcher = chokidar.watch('dirpath', {ignored: /^\./, persistent: true});
+    
+watcher
+    .on('add', function(path) {readFiles(path)
+                                    .then(files => {
+                                        console.log( "loaded ", files.length );
+                                        files.forEach( (item, index) => {
+                                            console.log( "item",index, "size ", item.contents.length, "name",item.filename);
+                                
+                                            let sentiment_params = {
+                                                method : 'POST',
+                                                rejectUnauthorized: false,
+                                                url : 'https://wdcrealtime.esri.com:6143/geoevent/rest/receiver/gdelt-geojson-in',
+                                                headers : {
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: item.contents
+                                            };
+                                    
+                                            sendRequest(sentiment_params);
+                                
+                                            var oldPath = dirpath + '/' + item.filename;
+                                            var newPath = complete_path + '/' + item.filename;
+                                
+                                            fs.rename(oldPath, newPath, function (err) {
+                                                if (err) throw err
+                                                console.log('Successfully renamed - AKA moved!')
+                                            })
+                                
+                                        });
+                                    })
+                                    .catch( error => {
+                                        console.log( error );
+                                    });;})
+    .on('change', function(path) {console.log('File', path, 'has been changed');})
+    .on('unlink', function(path) {console.log('File', path, 'has been removed');})
+    .on('error', function(error) {console.error('Error happened', error);})
