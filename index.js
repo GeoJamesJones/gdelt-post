@@ -3,23 +3,35 @@ const path = require('path');
 const request = require('request');
 var chokidar = require('chokidar');
 
-function readFiles(dirname, onFileContent, onError) {
-    fs.readdir(dirname, function(err, filenames) {
-      if (err) {
-        onError(err);
-        return;
-      }
-      filenames.forEach(function(filename) {
-        fs.readFile(dirname + filename, 'utf-8', function(err, content) {
-          if (err) {
-            onError(err);
-            return;
-          }
-          onFileContent(filename, content);
-        });
-      });
-    });
-  };
+
+function readFile (filepath){
+    fs.readFile(filepath, 'utf8', function(err, contents) {
+        if (err) {
+            console.log(err)
+        }
+        else {
+            console.log('File', filepath, 'has been added');
+            let sentiment_params = {
+                method : 'POST',
+                rejectUnauthorized: false,
+                url : 'https://wdcrealtime.esri.com:6143/geoevent/rest/receiver/gdelt-geojson-in',
+                headers : {
+                    'Content-Type': 'application/json'
+                },
+                body: contents
+            };
+    
+            sendRequest(sentiment_params);
+    
+            var newPath = path.join(complete_path, filepath.split('/')[1])
+    
+            fs.rename(filepath, newPath, function (err) {
+                if (err) throw err
+                console.log('Successfully renamed - AKA moved!')
+            })
+        }
+    }); 
+};
 
 async function post (options) {
     return new Promise((resolve, reject) => {
@@ -58,44 +70,11 @@ async function sendRequest (options) {
 let dirpath = './geojson';
 let complete_path = './finished';
 
-
-
-    
-
-var watcher = chokidar.watch('dirpath', {ignored: /^\./, persistent: true});
+let watcher = chokidar.watch(dirpath, {ignored: /^\./, persistent: true});
     
 watcher
-    .on('add', function(path) {readFiles(path)
-                                    .then(files => {
-                                        console.log( "loaded ", files.length );
-                                        files.forEach( (item, index) => {
-                                            console.log( "item",index, "size ", item.contents.length, "name",item.filename);
-                                
-                                            let sentiment_params = {
-                                                method : 'POST',
-                                                rejectUnauthorized: false,
-                                                url : 'https://wdcrealtime.esri.com:6143/geoevent/rest/receiver/gdelt-geojson-in',
-                                                headers : {
-                                                    'Content-Type': 'application/json'
-                                                },
-                                                body: item.contents
-                                            };
-                                    
-                                            sendRequest(sentiment_params);
-                                
-                                            var oldPath = dirpath + '/' + item.filename;
-                                            var newPath = complete_path + '/' + item.filename;
-                                
-                                            fs.rename(oldPath, newPath, function (err) {
-                                                if (err) throw err
-                                                console.log('Successfully renamed - AKA moved!')
-                                            })
-                                
-                                        });
-                                    })
-                                    .catch( error => {
-                                        console.log( error );
-                                    });;})
+    .on('add', function(path) {readFile(path);})
+    //.on('add', function(path) {console.log('File', path, 'has been added');})
     .on('change', function(path) {console.log('File', path, 'has been changed');})
     .on('unlink', function(path) {console.log('File', path, 'has been removed');})
     .on('error', function(error) {console.error('Error happened', error);})
