@@ -69,13 +69,14 @@ async function sendRequest (options) {
     }
   }
 
-let dirpath = './geojson'
+let dirpath = './geojson';
+let complete_path = './finished';
 
 readFiles(dirpath)
     .then(files => {
         console.log( "loaded ", files.length );
         files.forEach( (item, index) => {
-            console.log( "item",index, "size ", item.contents.length);
+            console.log( "item",index, "size ", item.contents.length, "name",item.filename);
 
             let sentiment_params = {
                 method : 'POST',
@@ -88,6 +89,15 @@ readFiles(dirpath)
             };
     
             sendRequest(sentiment_params);
+
+            var oldPath = dirpath + '/' + item.filename;
+            var newPath = complete_path + '/' + item.filename;
+
+            fs.rename(oldPath, newPath, function (err) {
+                if (err) throw err
+                console.log('Successfully renamed - AKA moved!')
+            })
+
         });
     })
     .catch( error => {
