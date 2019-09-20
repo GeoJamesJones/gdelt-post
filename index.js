@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const request = require('request');
-var chokidar = require('chokidar');
+const chokidar = require('chokidar');
 
 
 function readFile (filepath){

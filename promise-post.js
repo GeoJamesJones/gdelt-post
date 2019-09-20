@@ -78,25 +78,7 @@ readFiles(dirpath)
         files.forEach( (item, index) => {
             console.log( "item",index, "size ", item.contents.length, "name",item.filename);
 
-            let sentiment_params = {
-                method : 'POST',
-                rejectUnauthorized: false,
-                url : 'https://wdcrealtime.esri.com:6143/geoevent/rest/receiver/gdelt-geojson-in',
-                headers : {
-                    'Content-Type': 'application/json'
-                },
-                body: item.contents
-            };
-    
-            sendRequest(sentiment_params);
 
-            var oldPath = dirpath + '/' + item.filename;
-            var newPath = complete_path + '/' + item.filename;
-
-            fs.rename(oldPath, newPath, function (err) {
-                if (err) throw err
-                console.log('Successfully renamed - AKA moved!')
-            })
 
         });
     })
